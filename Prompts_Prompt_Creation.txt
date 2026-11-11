@@ -1,0 +1,17 @@
+
+Act as a project strategist, what are the top 3 goals for a portfolio project like a reaction timer game?
+
+Based on those goals, who are the primary audience for this project?
+
+List the essential features of this project, What must it do?
+
+Suggest a clean, modern color pallet and font pairing for this project
+
+Can you create a prompt out of all of this information that follows the format of Role, Task, Context, Constraints and Format in order to produce the code for this project
+
+
+
+
+
+
+

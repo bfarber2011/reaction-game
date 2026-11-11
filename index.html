@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Precision 3D Reaction Timer | Portfolio Project</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bgCanvas: '#0F172A',
+                        bgSurface: '#1E293B',
+                        bgSurfaceHover: '#334155',
+                        textPrimary: '#F1F5F9',
+                        textSecondary: '#94A3B8',
+                        readyGreen: '#10B981',
+                        waitingAmber: '#F59E0B',
+                        resultBlue: '#3B82F6',
+                        errorRed: '#EF4444',
+                    },
+                    fontFamily: {
+                        heading: ['Outfit', 'sans-serif'],
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom scrollbar for stats */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0F172A;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Prevent text highlight on rapid clicks in arena */
+        .no-select {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Pulse glowing effects */
+        .glow-ready {
+            box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.4);
+        }
+        .glow-waiting {
+            box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.3);
+        }
+        .glow-error {
+            box-shadow: 0 0 35px -5px rgba(239, 68, 68, 0.4);
+        }
+        .glow-result {
+            box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-bgCanvas text-textPrimary font-sans antialiased min-h-screen flex flex-col justify-between selection:bg-resultBlue selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-800 bg-bgCanvas/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-resultBlue/10 border border-resultBlue/20 rounded-xl text-resultBlue">
+                    <i data-lucide="zap" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-heading font-bold text-lg tracking-tight text-textPrimary">Chrono3D <span class="text-xs px-2 py-0.5 rounded-full bg-resultBlue/20 text-resultBlue font-mono uppercase tracking-wider ml-1">v1.0</span></h1>
+                    <p class="text-xs text-textSecondary">High-Precision WebGL Reaction Engine</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 text-xs font-mono">
+                <div class="hidden sm:flex items-center space-x-2 bg-bgSurface px-3 py-1.5 rounded-lg border border-slate-700/60 text-textSecondary">
+                    <i data-lucide="cpu" class="w-3.5 h-3.5 text-resultBlue"></i>
+                    <span>API: <strong class="text-textPrimary">performance.now()</strong></span>
+                </div>
+                <div class="hidden md:flex items-center space-x-2 bg-bgSurface px-3 py-1.5 rounded-lg border border-slate-700/60 text-textSecondary">
+                    <i data-lucide="box" class="w-3.5 h-3.5 text-readyGreen"></i>
+                    <span>Render: <strong class="text-textPrimary">Three.js WebGL</strong></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+        
+        <!-- Left & Center Panel: Primary Interactive Game Arena (Span 2) -->
+        <section class="lg:col-span-2 flex flex-col space-y-4">
+            
+            <!-- Game Canvas Container / Interactive Area -->
+            <div id="gameArena" class="no-select relative flex-1 min-h-[380px] sm:min-h-[460px] bg-bgSurface border-2 border-slate-700/60 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 flex flex-col justify-between p-6 group focus:outline-none focus:ring-2 focus:ring-resultBlue" tabindex="0" role="button" aria-label="Reaction arena. Click or press spacebar to start or react.">
+                
+                <!-- WebGL 3D Background Canvas Layer -->
+                <div id="canvasContainer" class="absolute inset-0 pointer-events-none z-0"></div>
+
+                <!-- Overlay Gradient for Readability -->
+                <div class="absolute inset-0 bg-gradient-to-t from-bgSurface/90 via-bgSurface/40 to-bgSurface/20 pointer-events-none z-0"></div>
+
+                <!-- Top Status Bar in Arena -->
+                <div class="relative z-10 flex justify-between items-center w-full">
+                    <div id="stateBadge" class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-slate-800/80 text-textSecondary border border-slate-700 backdrop-blur-md transition-all duration-300">
+                        <span id="badgeDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                        <span id="badgeText">IDLE STATE</span>
+                    </div>
+
+                    <div class="text-xs font-mono text-textSecondary bg-bgCanvas/60 px-2.5 py-1 rounded-md backdrop-blur-sm border border-slate-800">
+                        Press <kbd class="px-1.5 py-0.5 bg-slate-700 text-textPrimary rounded text-[10px] font-bold">SPACE</kbd> or <span class="text-textPrimary">CLICK</span>
+                    </div>
+                </div>
+
+                <!-- Center Display Mechanics & Text Prompts -->
+                <div class="relative z-10 my-auto text-center px-4 py-6 flex flex-col items-center justify-center space-y-3">
+                    
+                    <!-- Dynamic Icon Container -->
+                    <div id="promptIconBg" class="p-4 rounded-2xl bg-slate-800/80 border border-slate-700 text-textSecondary transition-all duration-300 transform group-hover:scale-105">
+                        <i id="promptIcon" data-lucide="play" class="w-10 h-10"></i>
+                    </div>
+
+                    <!-- Main Dynamic Heading -->
+                    <h2 id="promptTitle" class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-textPrimary transition-all duration-200">
+                        Click to Start Test
+                    </h2>
+
+                    <!-- Subtext Prompt / Score Readout -->
+                    <p id="promptSubtext" class="text-sm sm:text-base text-textSecondary max-w-md mx-auto leading-relaxed">
+                        When the 3D scene turns <strong class="text-readyGreen font-semibold">Green</strong>, click as fast as you can.
+                    </p>
+
+                    <!-- Large Millisecond Timer Display (Shown in Result state) -->
+                    <div id="timerReadoutContainer" class="hidden mt-2">
+                        <div class="text-5xl sm:text-6xl font-extrabold font-mono tracking-tight text-textPrimary" id="timerValue">
+                            0 <span class="text-2xl text-resultBlue font-sans">ms</span>
+                        </div>
+                        <div id="ratingBadge" class="mt-2 inline-block px-3 py-1 rounded-full text-xs font-bold font-mono tracking-wider uppercase bg-resultBlue/20 text-resultBlue border border-resultBlue/30">
+                            --
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Helper Bar -->
+                <div class="relative z-10 flex justify-between items-center text-xs text-textSecondary pt-4 border-t border-slate-800/60">
+                    <span id="attemptProgress">Attempt 0 of ∞</span>
+                    <span id="cheatWarning" class="text-errorRed/90 hidden font-semibold flex items-center gap-1">
+                        <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Early click registered!
+                    </span>
+                    <span class="hover:text-textPrimary transition-colors">Target: Visual Stimulus</span>
+                </div>
+            </div>
+
+            <!-- Contextual Game Instruction Bar -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="bg-bgSurface p-3.5 rounded-xl border border-slate-800 flex items-center space-x-3">
+                    <div class="p-2 rounded-lg bg-waitingAmber/10 text-waitingAmber">
+                        <i data-lucide="hourglass" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-textPrimary">1. Random Delay</div>
+                        <div class="text-[11px] text-textSecondary">1 to 5 sec unpredictable hold</div>
+                    </div>
+                </div>
+
+                <div class="bg-bgSurface p-3.5 rounded-xl border border-slate-800 flex items-center space-x-3">
+                    <div class="p-2 rounded-lg bg-readyGreen/10 text-readyGreen">
+                        <i data-lucide="mouse-pointer" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-textPrimary">2. Instant Flash</div>
+                        <div class="text-[11px] text-textSecondary">React on shape shift & green ring</div>
+                    </div>
+                </div>
+
+                <div class="bg-bgSurface p-3.5 rounded-xl border border-slate-800 flex items-center space-x-3">
+                    <div class="p-2 rounded-lg bg-resultBlue/10 text-resultBlue">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-textPrimary">3. Precise Stats</div>
+                        <div class="text-[11px] text-textSecondary">Sub-millisecond API recording</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Real-time Analytics & Attempt History -->
+        <aside class="flex flex-col space-y-4">
+            
+            <!-- Overall Stats Dashboard Card -->
+            <div class="bg-bgSurface border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="font-heading font-bold text-base text-textPrimary flex items-center space-x-2">
+                        <i data-lucide="activity" class="w-4 h-4 text-resultBlue"></i>
+                        <span>Session Metrics</span>
+                    </h3>
+                    <button id="resetStatsBtn" class="text-xs text-textSecondary hover:text-errorRed flex items-center space-x-1 px-2 py-1 rounded-md hover:bg-slate-800 transition-colors" title="Clear current session metrics">
+                        <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+                        <span>Reset</span>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- Personal Best -->
+                    <div class="bg-bgCanvas p-3.5 rounded-xl border border-slate-800/80">
+                        <div class="text-[11px] text-textSecondary uppercase tracking-wider font-semibold flex items-center justify-between">
+                            <span>Best Time</span>
+                            <i data-lucide="trophy" class="w-3.5 h-3.5 text-waitingAmber"></i>
+                        </div>
+                        <div class="text-2xl font-bold font-mono text-readyGreen mt-1" id="statBest">-- <span class="text-xs font-sans text-textSecondary">ms</span></div>
+                    </div>
+
+                    <!-- Average Score -->
+                    <div class="bg-bgCanvas p-3.5 rounded-xl border border-slate-800/80">
+                        <div class="text-[11px] text-textSecondary uppercase tracking-wider font-semibold flex items-center justify-between">
+                            <span>Average</span>
+                            <i data-lucide="calculator" class="w-3.5 h-3.5 text-resultBlue"></i>
+                        </div>
+                        <div class="text-2xl font-bold font-mono text-textPrimary mt-1" id="statAvg">-- <span class="text-xs font-sans text-textSecondary">ms</span></div>
+                    </div>
+
+                    <!-- Total Attempts -->
+                    <div class="bg-bgCanvas p-3.5 rounded-xl border border-slate-800/80">
+                        <div class="text-[11px] text-textSecondary uppercase tracking-wider font-semibold">Total Completed</div>
+                        <div class="text-xl font-bold font-mono text-textPrimary mt-1" id="statCount">0</div>
+                    </div>
+
+                    <!-- False Start Count -->
+                    <div class="bg-bgCanvas p-3.5 rounded-xl border border-slate-800/80">
+                        <div class="text-[11px] text-textSecondary uppercase tracking-wider font-semibold">False Starts</div>
+                        <div class="text-xl font-bold font-mono text-errorRed mt-1" id="statFails">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attempt History Logs -->
+            <div class="bg-bgSurface border border-slate-800 rounded-2xl p-5 flex-1 flex flex-col justify-between min-h-[260px]">
+                <div>
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                        <h3 class="font-heading font-bold text-base text-textPrimary flex items-center space-x-2">
+                            <i data-lucide="history" class="w-4 h-4 text-readyGreen"></i>
+                            <span>Recent Attempts</span>
+                        </h3>
+                        <span class="text-xs font-mono text-textSecondary" id="historyCounter">0 logs</span>
+                    </div>
+
+                    <!-- Log List Box -->
+                    <div id="historyList" class="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                        <!-- Empty Placeholder -->
+                        <div id="emptyHistory" class="text-center py-8 text-textSecondary text-xs">
+                            <i data-lucide="clock" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+                            No reaction logs recorded yet.<br>Complete your first round above!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rating Legend -->
+                <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-textSecondary space-y-1">
+                    <div class="font-semibold text-textPrimary mb-1">Human Benchmarks:</div>
+                    <div class="flex justify-between"><span>&lt; 200 ms</span><span class="text-readyGreen font-mono font-bold">Pro Gamer Lightning</span></div>
+                    <div class="flex justify-between"><span>200 - 270 ms</span><span class="text-resultBlue font-mono font-bold">Average Human</span></div>
+                    <div class="flex justify-between"><span>&gt; 300 ms</span><span class="text-waitingAmber font-mono font-bold">Casual / Sluggish</span></div>
+                </div>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Footer Technical Specs -->
+    <footer class="border-t border-slate-800 bg-bgCanvas py-4 mt-6">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center text-xs text-textSecondary gap-2">
+            <div>
+                Built for engineering evaluation • Uses <code class="text-textPrimary font-mono">performance.now()</code> precision timing
+            </div>
+            <div class="flex items-center space-x-4">
+                <span>WebGL 3D Enabled</span>
+                <span>•</span>
+                <span>Responsive Design</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic & Three.js Graphics Integration -->
+    <script>
+        /**
+         * REACTION TIMER ENGINE & 3D GRAPHICS MODULE
+         * High-precision timing implementation with modular state machine architecture.
+         */
+
+        // --- GAME STATES ENUM ---
+        const GameState = {
+            IDLE: 'IDLE',
+            WAITING: 'WAITING',
+            READY: 'READY',
+            RESULT: 'RESULT',
+            ERROR: 'ERROR'
+        };
+
+        // --- APP STATE VARIABLES ---
+        let currentState = GameState.IDLE;
+        let startTime = 0;
+        let endTime = 0;
+        let timeoutId = null;
+        
+        // Session Analytics Data (Kept in JS memory as per constraints)
+        const stats = {
+            attempts: [], // Stores numeric ms array
+            falseStarts: 0,
+            best: null,
+            average: null
+        };
+
+        // --- DOM ELEMENT REFERENCES ---
+        const gameArena = document.getElementById('gameArena');
+        const stateBadge = document.getElementById('stateBadge');
+        const badgeDot = document.getElementById('badgeDot');
+        const badgeText = document.badgeText = document.getElementById('badgeText');
+        const promptIconBg = document.getElementById('promptIconBg');
+        const promptIcon = document.getElementById('promptIcon');
+        const promptTitle = document.getElementById('promptTitle');
+        const promptSubtext = document.getElementById('promptSubtext');
+        const timerReadoutContainer = document.getElementById('timerReadoutContainer');
+        const timerValue = document.getElementById('timerValue');
+        const ratingBadge = document.getElementById('ratingBadge');
+        const attemptProgress = document.getElementById('attemptProgress');
+        const cheatWarning = document.getElementById('cheatWarning');
+        
+        // Dashboard DOMs
+        const statBest = document.getElementById('statBest');
+        const statAvg = document.getElementById('statAvg');
+        const statCount = document.getElementById('statCount');
+        const statFails = document.getElementById('statFails');
+        const historyList = document.getElementById('historyList');
+        const emptyHistory = document.getElementById('emptyHistory');
+        const historyCounter = document.getElementById('historyCounter');
+        const resetStatsBtn = document.getElementById('resetStatsBtn');
+
+        // --- THREE.JS 3D SCENE SETUP ---
+        let scene, camera, renderer, shapeMesh, wireframeMesh, ringMesh;
+        let animationFrameId;
+        const canvasContainer = document.getElementById('canvasContainer');
+
+        function init3D() {
+            // Scene Setup
+            scene = new THREE.Scene();
+
+            // Camera Setup
+            const aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+            camera.position.z = 6;
+
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            canvasContainer.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 1.2);
+            pointLight.position.set(5, 5, 5);
+            scene.add(pointLight);
+
+            const pointLight2 = new THREE.PointLight(0x3b82f6, 1);
+            pointLight2.position.set(-5, -5, -2);
+            scene.add(pointLight2);
+
+            // Create Main 3D Shape (Icosahedron for complex reflection look)
+            const geometry = new THREE.IcosahedronGeometry(1.5, 0);
+            
+            // Primary Material
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x1E293B,
+                emissive: 0x0F172A,
+                specular: 0x3B82F6,
+                shininess: 60,
+                flatShading: true,
+                transparent: true,
+                opacity: 0.85
+            });
+            shapeMesh = new THREE.Mesh(geometry, material);
+            scene.add(shapeMesh);
+
+            // Wireframe Overlay mesh for futuristic visual appeal
+            const wireframeGeo = new THREE.IcosahedronGeometry(1.54, 0);
+            const wireframeMat = new THREE.MeshBasicMaterial({
+                color: 0x3B82F6,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.3
+            });
+            wireframeMesh = new THREE.Mesh(wireframeGeo, wireframeMat);
+            scene.add(wireframeMesh);
+
+            // Visual Ring Shockwave indicator for READY state
+            const ringGeo = new THREE.RingGeometry(1.8, 1.95, 32);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x10B981,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0
+            });
+            ringMesh = new THREE.Mesh(ringGeo, ringMat);
+            scene.add(ringMesh);
+
+            // Window Resize Listener
+            window.addEventListener('resize', onWindowResize);
+
+            // Start Render Loop
+            animate3D();
+        }
+
+        // Three.js Render Loop
+        function animate3D() {
+            animationFrameId = requestAnimationFrame(animate3D);
+
+            // Continuous background rotation
+            if (shapeMesh && wireframeMesh) {
+                let speedFactor = 0.005;
+                if (currentState === GameState.WAITING) speedFactor = 0.02; // Spin faster while waiting
+                if (currentState === GameState.READY) speedFactor = 0.04; // Rapid spin when triggered
+
+                shapeMesh.rotation.x += speedFactor;
+                shapeMesh.rotation.y += speedFactor * 1.5;
+                wireframeMesh.rotation.x += speedFactor;
+                wireframeMesh.rotation.y += speedFactor * 1.5;
+            }
+
+            // Pulse Shockwave Ring if READY
+            if (currentState === GameState.READY && ringMesh) {
+                ringMesh.scale.x += 0.04;
+                ringMesh.scale.y += 0.04;
+                ringMesh.material.opacity = Math.max(0, 1 - (ringMesh.scale.x - 1) / 1.5);
+                
+                if (ringMesh.scale.x > 2.5) {
+                    ringMesh.scale.set(1, 1, 1);
+                    ringMesh.material.opacity = 0.8;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle Responsive Canvas Resizing
+        function onWindowResize() {
+            if (!camera || !renderer || !canvasContainer) return;
+            const width = canvasContainer.clientWidth;
+            const height = canvasContainer.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        // Update 3D Geometry Color based on state transitions
+        function update3DState(state) {
+            if (!shapeMesh || !wireframeMesh || !ringMesh) return;
+
+            switch (state) {
+                case GameState.IDLE:
+                    shapeMesh.material.color.setHex(0x1E293B);
+                    shapeMesh.material.emissive.setHex(0x0F172A);
+                    wireframeMesh.material.color.setHex(0x3B82F6);
+                    ringMesh.material.opacity = 0;
+                    break;
+
+                case GameState.WAITING:
+                    shapeMesh.material.color.setHex(0x7C2D12);
+                    shapeMesh.material.emissive.setHex(0xF59E0B);
+                    wireframeMesh.material.color.setHex(0xF59E0B);
+                    ringMesh.material.opacity = 0;
+                    break;
+
+                case GameState.READY:
+                    shapeMesh.material.color.setHex(0x065F46);
+                    shapeMesh.material.emissive.setHex(0x10B981);
+                    wireframeMesh.material.color.setHex(0x10B981);
+                    ringMesh.scale.set(1, 1, 1);
+                    ringMesh.material.opacity = 0.9;
+                    break;
+
+                case GameState.RESULT:
+                    shapeMesh.material.color.setHex(0x1E3A8A);
+                    shapeMesh.material.emissive.setHex(0x3B82F6);
+                    wireframeMesh.material.color.setHex(0x60A5FA);
+                    ringMesh.material.opacity = 0;
+                    break;
+
+                case GameState.ERROR:
+                    shapeMesh.material.color.setHex(0x991B1B);
+                    shapeMesh.material.emissive.setHex(0xEF4444);
+                    wireframeMesh.material.color.setHex(0xEF4444);
+                    ringMesh.material.opacity = 0;
+                    break;
+            }
+        }
+
+        // --- STATE MACHINE CONTROL LOGIC ---
+
+        function transitionTo(newState) {
+            currentState = newState;
+            update3DState(newState);
+
+            // Reset arena styles
+            gameArena.classList.remove('border-readyGreen', 'border-waitingAmber', 'border-resultBlue', 'border-errorRed', 'glow-ready', 'glow-waiting', 'glow-error', 'glow-result');
+            cheatWarning.classList.add('hidden');
+
+            switch (newState) {
+                case GameState.IDLE:
+                    // UI Elements
+                    stateBadge.className = "inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-textSecondary border border-slate-700";
+                    badgeDot.className = "w-2 h-2 rounded-full bg-slate-400";
+                    badgeText.innerText = "READY TO START";
+
+                    promptIconBg.className = "p-4 rounded-2xl bg-slate-800/80 border border-slate-700 text-textSecondary";
+                    updateIcon('play');
+
+                    promptTitle.innerText = "Click to Start Test";
+                    promptTitle.className = "font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-textPrimary";
+                    
+                    promptSubtext.innerHTML = 'When the 3D visual turns <strong class="text-readyGreen font-semibold">Green</strong>, click as fast as you can.';
+                    timerReadoutContainer.classList.add('hidden');
+                    break;
+
+                case GameState.WAITING:
+                    gameArena.classList.add('border-waitingAmber', 'glow-waiting');
+
+                    stateBadge.className = "inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-waitingAmber/20 text-waitingAmber border border-waitingAmber/30";
+                    badgeDot.className = "w-2 h-2 rounded-full bg-waitingAmber animate-ping";
+                    badgeText.innerText = "WAIT FOR GREEN...";
+
+                    promptIconBg.className = "p-4 rounded-2xl bg-waitingAmber/20 border border-waitingAmber/40 text-waitingAmber";
+                    updateIcon('hourglass');
+
+                    promptTitle.innerText = "Wait for green...";
+                    promptTitle.className = "font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-waitingAmber";
+                    
+                    promptSubtext.innerText = "Do not click too early or a false start will be triggered!";
+                    timerReadoutContainer.classList.add('hidden');
+
+                    // Start unpredictable delay between 1000ms (1s) and 5000ms (5s)
+                    const randomDelay = Math.floor(Math.random() * 4000) + 1000;
+                    timeoutId = setTimeout(() => {
+                        triggerReadyState();
+                    }, randomDelay);
+                    break;
+
+                case GameState.READY:
+                    // High precision timing anchor MUST be recorded at the exact moment state turns READY
+                    startTime = performance.now();
+
+                    gameArena.classList.add('border-readyGreen', 'glow-ready');
+
+                    stateBadge.className = "inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-readyGreen/20 text-readyGreen border border-readyGreen/30";
+                    badgeDot.className = "w-2 h-2 rounded-full bg-readyGreen animate-pulse";
+                    badgeText.innerText = "CLICK NOW!";
+
+                    promptIconBg.className = "p-4 rounded-2xl bg-readyGreen/20 border border-readyGreen/40 text-readyGreen scale-110";
+                    updateIcon('zap');
+
+                    promptTitle.innerText = "CLICK NOW!";
+                    promptTitle.className = "font-heading text-4xl sm:text-5xl font-extrabold tracking-tight text-readyGreen animate-bounce";
+                    
+                    promptSubtext.innerText = "React now! Tap screen or press Spacebar!";
+                    break;
+
+                case GameState.RESULT:
+                    gameArena.classList.add('border-resultBlue', 'glow-result');
+
+                    stateBadge.className = "inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-resultBlue/20 text-resultBlue border border-resultBlue/30";
+                    badgeDot.className = "w-2 h-2 rounded-full bg-resultBlue";
+                    badgeText.innerText = "TEST COMPLETE";
+
+                    promptIconBg.className = "p-4 rounded-2xl bg-resultBlue/20 border border-resultBlue/40 text-resultBlue";
+                    updateIcon('check-circle');
+
+                    promptTitle.innerText = "Reaction Recorded";
+                    promptTitle.className = "font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-textPrimary";
+                    
+                    promptSubtext.innerText = "Click anywhere in the box to try again.";
+                    timerReadoutContainer.classList.remove('hidden');
+                    break;
+
+                case GameState.ERROR:
+                    gameArena.classList.add('border-errorRed', 'glow-error');
+
+                    stateBadge.className = "inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-errorRed/20 text-errorRed border border-errorRed/30";
+                    badgeDot.className = "w-2 h-2 rounded-full bg-errorRed";
+                    badgeText.innerText = "FALSE START";
+
+                    promptIconBg.className = "p-4 rounded-2xl bg-errorRed/20 border border-errorRed/40 text-errorRed";
+                    updateIcon('x-circle');
+
+                    promptTitle.innerText = "Too Soon!";
+                    promptTitle.className = "font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-errorRed";
+                    
+                    promptSubtext.innerText = "You clicked before the visual turned green. Click to retry.";
+                    cheatWarning.classList.remove('hidden');
+                    timerReadoutContainer.classList.add('hidden');
+                    break;
+            }
+        }
+
+        // Helper to update Lucide icons dynamically
+        function updateIcon(iconName) {
+            promptIcon.setAttribute('data-lucide', iconName);
+            lucide.createIcons({
+                targets: [promptIcon]
+            });
+        }
+
+        function triggerReadyState() {
+            transitionTo(GameState.READY);
+        }
+
+        // User Input Handler (Triggers on Click or Spacebar)
+        function handleUserInput(e) {
+            // Prevent spacebar scrolling page when focusing arena
+            if (e.type === 'keydown' && e.code !== 'Space') return;
+            if (e.type === 'keydown') e.preventDefault();
+
+            switch (currentState) {
+                case GameState.IDLE:
+                    transitionTo(GameState.WAITING);
+                    break;
+
+                case GameState.WAITING:
+                    // Clicked too early during random delay
+                    clearTimeout(timeoutId);
+                    stats.falseStarts++;
+                    updateDashboard();
+                    transitionTo(GameState.ERROR);
+                    break;
+
+                case GameState.READY:
+                    // Valid Reaction: Measure exact high-res timing delta
+                    endTime = performance.now();
+                    const reactionTime = Math.round(endTime - startTime);
+                    
+                    recordReactionTime(reactionTime);
+                    transitionTo(GameState.RESULT);
+                    break;
+
+                case GameState.RESULT:
+                case GameState.ERROR:
+                    // Reset to new attempt
+                    transitionTo(GameState.WAITING);
+                    break;
+            }
+        }
+
+        // Process and Record Score
+        function recordReactionTime(ms) {
+            stats.attempts.unshift(ms); // Add to start of array
+            
+            // Recalculate Best Time
+            if (stats.best === null || ms < stats.best) {
+                stats.best = ms;
+            }
+
+            // Recalculate Average Time
+            const sum = stats.attempts.reduce((acc, curr) => acc + curr, 0);
+            stats.average = Math.round(sum / stats.attempts.length);
+
+            // Update Timer Readout
+            timerValue.innerHTML = `${ms} <span class="text-2xl text-resultBlue font-sans">ms</span>`;
+            
+            // Qualitative Performance Rating Category
+            let rating = '';
+            let ratingClass = '';
+
+            if (ms < 180) {
+                rating = "Godlike / Ultra Fast";
+                ratingClass = "bg-purple-500/20 text-purple-400 border-purple-500/30";
+            } else if (ms < 230) {
+                rating = "Pro Gamer Speed";
+                ratingClass = "bg-readyGreen/20 text-readyGreen border-readyGreen/30";
+            } else if (ms < 280) {
+                rating = "Human Average";
+                ratingClass = "bg-resultBlue/20 text-resultBlue border-resultBlue/30";
+            } else if (ms < 350) {
+                rating = "Slightly Sluggish";
+                ratingClass = "bg-waitingAmber/20 text-waitingAmber border-waitingAmber/30";
+            } else {
+                rating = "Distracted / Slow";
+                ratingClass = "bg-errorRed/20 text-errorRed border-errorRed/30";
+            }
+
+            ratingBadge.innerText = rating;
+            ratingBadge.className = `mt-2 inline-block px-3 py-1 rounded-full text-xs font-bold font-mono tracking-wider uppercase border ${ratingClass}`;
+
+            // Update Sidebar Analytics & History Log
+            updateDashboard();
+            appendHistoryLog(ms, rating);
+        }
+
+        // Update Stats Panel
+        function updateDashboard() {
+            statCount.innerText = stats.attempts.length;
+            statFails.innerText = stats.falseStarts;
+            
+            statBest.innerHTML = stats.best !== null ? `${stats.best} <span class="text-xs font-sans text-textSecondary">ms</span>` : `-- <span class="text-xs font-sans text-textSecondary">ms</span>`;
+            statAvg.innerHTML = stats.average !== null ? `${stats.average} <span class="text-xs font-sans text-textSecondary">ms</span>` : `-- <span class="text-xs font-sans text-textSecondary">ms</span>`;
+            
+            attemptProgress.innerText = `Attempt ${stats.attempts.length} of ∞`;
+            historyCounter.innerText = `${stats.attempts.length} logs`;
+        }
+
+        // Append Attempt to History List Component
+        function appendHistoryLog(ms, rating) {
+            if (emptyHistory) emptyHistory.classList.add('hidden');
+
+            const logItem = document.createElement('div');
+            logItem.className = "flex items-center justify-between p-2.5 bg-bgCanvas rounded-xl border border-slate-800/80 text-xs font-mono animate-fadeIn";
+            
+            const attemptNum = stats.attempts.length;
+            
+            logItem.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <span class="text-textSecondary text-[10px]">#${attemptNum}</span>
+                    <span class="font-bold text-textPrimary">${ms} ms</span>
+                </div>
+                <span class="text-[10px] text-textSecondary font-sans px-2 py-0.5 rounded bg-slate-800 border border-slate-700">${rating}</span>
+            `;
+
+            historyList.insertBefore(logItem, historyList.firstChild);
+        }
+
+        // Reset All Analytics
+        function resetStats() {
+            stats.attempts = [];
+            stats.falseStarts = 0;
+            stats.best = null;
+            stats.average = null;
+
+            updateDashboard();
+
+            // Clear Log list visually
+            historyList.innerHTML = '';
+            historyList.appendChild(emptyHistory);
+            emptyHistory.classList.remove('hidden');
+
+            transitionTo(GameState.IDLE);
+        }
+
+        // --- ATTACH EVENT LISTENERS ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // Initialize Lucide Icons
+            lucide.createIcons();
+
+            // Initialize Three.js 3D Viewport
+            init3D();
+
+            // Arena Pointer & Keyboard Listeners
+            gameArena.addEventListener('mousedown', (e) => {
+                // Prevent trigger if clicking on specific buttons inside
+                handleUserInput(e);
+            });
+
+            gameArena.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent double trigger with mousedown on touch devices
+                handleUserInput(e);
+            }, { passive: false });
+
+            gameArena.addEventListener('keydown', handleUserInput);
+
+            // Reset Button
+            resetStatsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetStats();
+            });
+
+            // Initial UI Setup
+            transitionTo(GameState.IDLE);
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+Role: You are an expert frontend web developer and UI/UX engineer specializing in high-performance web applications and polished interactive mini-games.
+
+Task: Build a production-ready, fully responsive Reaction Timer Game web application. The application must feature high-precision timing, robust game state management, multi-input support (mouse/touch and keyboard spacebar), and local data persistence with session stats and history tracking.
+
+Context: 
+- The project is designed as a portfolio piece targeted at technical recruiters, hiring managers, and senior software engineers. Therefore, it must demonstrate both pristine visual polish/UX and deep technical rigor (avoiding common pitfalls like input lag or inaccurate timers).
+- The core mechanics revolve around a randomized delay state machine, anti-cheat false start detection, and precise millisecond measurement.
+
+Constraints:
+1. Technology Stack: Use modern HTML5, CSS3/Tailwind CSS, and vanilla JavaScript (or React if preferred, structured cleanly with modular components/ES6 modules).
+2. Timing Accuracy: You MUST use the high-resolution browser API `performance.now()` for timing delta calculations rather than `Date.now()`.
+3. Accessibility & Controls: Must support full keyboard navigation (Spacebar trigger to start/click) alongside standard mouse clicks and mobile touch events.
+4. State Integrity: Implement a strict state machine handling: Idle/Start -> Wait (random delay 2s-6s with Amber token) -> Click/Go (Emerald green token) -> Results / Error (False start crimson token). Prevent race conditions or spam clicking.
+5. Data Persistence: Store session attempts automatically in `localStorage` and calculate rolling session averages, personal bests, and recent history logs.
+
+Format:
+Provide a clean, well-structured, production-ready codebase including:
+1. index.html with accessible markup and appropriate semantic tags.
+2. styles.css (or Tailwind utility classes) utilizing the provided modern dark mode design tokens:
+   - Canvas Background: #0F172A (Slate 900)
+   - Surface Cards: #1E293B (Slate 800)
+   - Wait / Warning: #F59E0B (Amber)
+   - Success / Go: #10B981 (Emerald)
+   - Danger / False Start: #EF4444 (Crimson)
+   - Accent: #06B6D4 (Teal)
+   - Font Pairing: 'Inter' for UI text, and 'JetBrains Mono' with `font-variant-numeric: tabular-nums` for timer readouts to prevent horizontal layout shift.
+3. app.js containing the high-precision state machine logic, performance.now() hooks, event listeners, and local storage state management.
+4. Clear comments explaining the architecture and timing calculations for senior engineering code reviewers.
+
+__________________________________________________________________________________________
+
+Reaction Game - Prompt - Claude
+Role
+You are an experienced frontend developer creating a portfolio project to demonstrate technical proficiency, user experience design thinking, and polished execution to potential employers and hiring managers in the tech industry.
+
+Task
+Build a complete reaction timer game as a static HTML/JavaScript website that measures and displays user reaction times using Three.js for visually appealing 3D graphics and animations — showcasing both web development skills and 3D programming capabilities.
+
+Context
+This project serves as a portfolio piece targeting technical recruiters, engineering managers, and fellow developers who need to quickly evaluate your JavaScript skills, timing precision, UI/UX thinking, 3D graphics programming, and ability to deliver complete products.
+
+The game should be simple enough to understand immediately but sophisticated enough to showcase advanced development capabilities, including modern 3D web technologies.
+
+Constraints
+Essential Features Required
+Start/stop game controls with proper state management
+Random stimulus timing (1–5 seconds) to prevent pattern recognition
+Accurate millisecond timing measurement using appropriate JavaScript methods
+Three.js 3D scene with animated shapes as visual reaction stimulus (rotating cubes, spheres, or geometric forms)
+Immediate reaction time display after each attempt
+Session statistics (average, best time, attempt count)
+False start detection with user feedback
+Clear instructions and visual state indicators
+Responsive design for desktop and mobile
+Reset functionality and proper error handling
+Visual / 3D Requirements
+Three.js scene with camera, lighting, and animated 3D objects
+Smooth animations and transitions between game states
+Visually distinct 3D shapes or animations for different game states
+Professional 3D aesthetic that enhances rather than distracts from gameplay
+Optimized performance to maintain accurate timing despite 3D rendering
+Design Requirements
+Colors:
+Background: #0F172A
+Surfaces: #1E293B
+Primary text: #F1F5F9
+Ready state: #10B981
+Waiting state: #F59E0B
+Results: #3B82F6
+Errors: #EF4444
+Secondary text: #94A3B8
+Typography:
+Inter/System UI for data and interface elements
+Poppins/Outfit for headings
+Visual Style:
+Modern, clean aesthetic appealing to technical professionals
+Excellent contrast ratios for accessibility
+3D elements should complement the overall color scheme
+Technical Standards
+Clean, well-structured vanilla JavaScript code
+Proper DOM manipulation and event handling
+Memory management for 3D objects and animations
+No browser storage APIs (use JavaScript variables only)
+Professional-grade error handling and edge case management
+Performance optimization for accurate timing alongside 3D rendering
+Format
+Create a single HTML artifact using the text/html type that implements all essential features with production-quality code.
+
+Include comprehensive functionality that demonstrates your technical skills in both web development and 3D graphics programming, while maintaining excellent user experience and visual polish suitable for a portfolio presentation.
